@@ -1,0 +1,23 @@
+# Binaries
+*.out
+*.exe
+smoke
+
+# Build artifacts
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.s
+
+# Profiling/debug
+*.prof
+*.data
+perf.data*
+
+# Editor/system
+.DS_Store
+*.swp
+*.swo
