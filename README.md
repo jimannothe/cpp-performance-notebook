@@ -19,6 +19,19 @@ cd /home/jman/cpp-performance-notebook
 ./scripts/asm.sh src/smoke.cpp
 ```
 
+## Execute C++ Embedded In Markdown
+
+You can compile and run fenced C++ blocks directly from `.md` files.
+
+```bash
+cd /home/jman/cpp-performance-notebook
+./scripts/md_cpp.sh notes/03_decltype.md --list
+./scripts/md_cpp.sh notes/03_decltype.md --block 1 --compile-only
+./scripts/md_cpp.sh notes/03_decltype.md --block 1
+```
+
+Supported fence labels: `cpp`, `c++`, `cc`, `cxx`.
+
 ## Neovim checklist
 
 Inside Neovim:

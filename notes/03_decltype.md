@@ -8,6 +8,8 @@
 ## Code example
 
 ```cpp
+#include <utility>
+
 template <typename T, typename U>
 auto accumulate_energy(T a, U b) -> decltype(a + b) {
   return a + b;
