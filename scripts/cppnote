@@ -22,6 +22,8 @@ usage:
 commands:
   help
   env
+  doctor [--json]
+  selftest
   compile <source.cpp> [output]
   run <source.cpp> [args...]
   asm <source.cpp> [asm-file]
@@ -35,6 +37,8 @@ commands:
   install
 
 examples:
+  cppnote doctor
+  cppnote selftest
   cppnote compile src/smoke.cpp smoke
   cppnote md-list notes/integrated/005-memory-layout-and-alignment.md
   cppnote md-check notes/03_decltype.md 1
@@ -62,6 +66,109 @@ case "$cmd" in
     echo "repo_root=$repo_root"
     echo "scripts=$repo_root/scripts"
     echo "notes=$repo_root/notes"
+    ;;
+
+  doctor)
+    json=0
+    if [ "${1:-}" = "--json" ]; then
+      json=1
+    elif [ $# -gt 0 ]; then
+      echo "usage: cppnote doctor [--json]"
+      exit 1
+    fi
+
+    status=0
+    check_cmd() {
+      local name="$1"
+      local required="$2"
+      if command -v "$name" >/dev/null 2>&1; then
+        [ "$json" -eq 1 ] && echo "{\"type\":\"cmd\",\"name\":\"$name\",\"ok\":true,\"required\":$required}" || echo "[OK] command: $name"
+      else
+        [ "$json" -eq 1 ] && echo "{\"type\":\"cmd\",\"name\":\"$name\",\"ok\":false,\"required\":$required}" || echo "[MISSING] command: $name"
+        if [ "$required" = "true" ]; then
+          status=1
+        fi
+      fi
+    }
+    check_file() {
+      local path="$1"
+      if [ -f "$path" ]; then
+        [ "$json" -eq 1 ] && echo "{\"type\":\"file\",\"path\":\"$path\",\"ok\":true}" || echo "[OK] file: $path"
+      else
+        [ "$json" -eq 1 ] && echo "{\"type\":\"file\",\"path\":\"$path\",\"ok\":false}" || echo "[MISSING] file: $path"
+        status=1
+      fi
+    }
+
+    [ "$json" -eq 0 ] && echo "== cppnote doctor =="
+    check_cmd "bash" true
+    check_cmd "clang++" true
+    check_cmd "awk" true
+    check_cmd "sed" true
+    check_cmd "perf" false
+    check_cmd "nvim" false
+
+    check_file "$repo_root/scripts/md_cpp.sh"
+    check_file "$repo_root/scripts/new_integrated_lesson.sh"
+    check_file "$repo_root/scripts/cpp_block_scaffold.sh"
+    check_file "$repo_root/scripts/nvim_cpp_block.vim"
+    check_file "$repo_root/notes/templates/integrated_lesson.md"
+
+    if [ "$json" -eq 0 ]; then
+      if [ "$status" -eq 0 ]; then
+        echo "doctor: healthy"
+      else
+        echo "doctor: issues found"
+      fi
+    fi
+    exit "$status"
+    ;;
+
+  selftest)
+    echo "== cppnote selftest =="
+    status=0
+
+    if ! "$repo_root/scripts/cpp_block_scaffold.sh" main | grep -q '^```cpp'; then
+      echo "[FAIL] scaffold main fence"
+      status=1
+    else
+      echo "[OK] scaffold main fence"
+    fi
+
+    tmp_md="$(mktemp)"
+    cat >"$tmp_md" <<'EOF'
+# selftest
+```cpp
+#include <iostream>
+int main() {
+  std::cout << "cppnote-selftest-ok\n";
+  return 0;
+}
+```
+EOF
+
+    if ! "$repo_root/scripts/md_cpp.sh" "$tmp_md" --block 1 --compile-only >/dev/null 2>&1; then
+      echo "[FAIL] md compile-only"
+      status=1
+    else
+      echo "[OK] md compile-only"
+    fi
+
+    run_out="$("$repo_root/scripts/md_cpp.sh" "$tmp_md" --block 1 2>&1 || true)"
+    if printf '%s\n' "$run_out" | grep -q 'cppnote-selftest-ok'; then
+      echo "[OK] md run"
+    else
+      echo "[FAIL] md run"
+      status=1
+    fi
+    rm -f "$tmp_md"
+
+    if [ "$status" -eq 0 ]; then
+      echo "selftest: passed"
+    else
+      echo "selftest: failed"
+    fi
+    exit "$status"
     ;;
 
   compile)

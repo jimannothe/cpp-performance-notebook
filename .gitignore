@@ -21,3 +21,13 @@ perf.data*
 .DS_Store
 *.swp
 *.swo
+
+# Security: never store SSH private/public keys in repo
+yes
+yes.pub
+*.pem
+*.key
+id_ed25519
+id_ed25519.pub
+id_rsa
+id_rsa.pub

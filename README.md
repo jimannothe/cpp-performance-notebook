@@ -13,7 +13,7 @@ Performance-centered C++ notebook and experiment workspace.
 ## Quick start
 
 ```bash
-cd /home/jman/cpp-performance-notebook
+# from repo root
 ./scripts/build_release.sh src/smoke.cpp smoke
 ./smoke
 ./scripts/asm.sh src/smoke.cpp
@@ -24,7 +24,7 @@ cd /home/jman/cpp-performance-notebook
 You can compile and run fenced C++ blocks directly from `.md` files.
 
 ```bash
-cd /home/jman/cpp-performance-notebook
+# from repo root
 ./scripts/md_cpp.sh notes/03_decltype.md --list
 ./scripts/md_cpp.sh notes/03_decltype.md --block 1 --compile-only
 ./scripts/md_cpp.sh notes/03_decltype.md --block 1
@@ -43,7 +43,7 @@ Use the three-track note flow:
 Scaffold a new integrated topic:
 
 ```bash
-cd /home/jman/cpp-performance-notebook
+# from repo root
 ./scripts/new_integrated_lesson.sh 005 memory-layout-and-alignment
 ./scripts/md_cpp.sh notes/integrated/005-memory-layout-and-alignment.md --block 1 --compile-only
 ```
@@ -73,7 +73,7 @@ Use this section as the practical interface for daily work.
 Install once:
 
 ```bash
-cd /home/jman/cpp-performance-notebook
+# from repo root
 ./scripts/cppnote install
 ```
 
@@ -81,6 +81,8 @@ Then use globally:
 
 ```bash
 cppnote help
+cppnote doctor
+cppnote selftest
 cppnote compile src/smoke.cpp smoke
 cppnote run src/smoke.cpp
 cppnote md-list notes/integrated/005-memory-layout-and-alignment.md
@@ -95,7 +97,7 @@ cppnote notes integrated
 
 Use a fenced block with one of: `cpp`, `c++`, `cc`, `cxx`.
 
-```md
+````md
 ```cpp
 #include <iostream>
 int main() {
@@ -103,13 +105,14 @@ int main() {
   return 0;
 }
 ```
+````
 
 ### 1.1) Insert C++ fence scaffold from Neovim
 
 Load helper commands in Neovim:
 
 ```vim
-:source /home/jman/cpp-performance-notebook/scripts/nvim_cpp_block.vim
+:source scripts/nvim_cpp_block.vim
 ```
 
 Then at your cursor position:
