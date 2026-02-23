@@ -1,65 +1,43 @@
 # 001 intro (book)
 
-This will be a quick refresher on *C++*. Including previous and up to standard *C++20*.
+This is a quick refresher on modern C++ (up to C++20), focused on practical syntax and type behavior.
 
-Focus is to refresh the basics and get up to, performance optimization topics in general ASAP.
+The goal is to refresh fundamentals fast and move toward performance-oriented topics.
 
-This is is also an interactive notebook vibe coded using ***Codex***.
+This notebook is interactive: C++ code blocks in markdown can be compiled and executed.
 
-The environment consists of Nvim set up for *C++* execution and parsing. 
-
-Lessons are documented in markdown files. *C+* blocks can be embedded into the lesson, these *C++* blocks can be compiled and executed from the lesson itself. For this and other ***interactive*** functions the **cppnote** command has been created.
+The environment uses Neovim plus helper scripts and the `cppnote` command.
 
 
 ```cpp
-
-//This Block was introduced with the CppNoteBlock nvim custom command
+// Intro runnable block
 #include <iostream>
-auto main() -> int {  
-  std::cout << "Introducing old and new syntax -> \n";
+int main() {
+  std::cout << "Introducing old and new syntax\n";
+  return 0;
 }
 ```
 
-- No need to explicitly state a **return** value.
-  - Use of the trailing return type: **->** and **auto** keyword. To deduce the return type automatically.
-- 
+- `auto main() -> int` and `int main()` are both valid.
+- For beginner readability, `int main()` is usually clearer.
 
 
-Lets look at the following code:
+Now look at the following conversion behavior:
 
 
 ```cpp
-// Type declarations and overload operator
+// Type conversions with std::plus
 #include <iostream>
 #include <functional>
+
 int main() {
- 
-  std::cout << "This is another, older way, of declaring a function\n And 2 different ways to add a value: \n";
-
-  //Now lets add 2 variables, a float and an int
-
-  std::cout << std::plus<int>{}(3.14,3) << "due to int declaration \n";
-
-  std::cout << std::plus<>{}(3.14,3) << " due to int promotion \n";
-
-  auto x = 3.14 +  3;
-
-  std::cout << x << "\n";
-//  std::cout << 
+  std::cout << std::plus<int>{}(3.14, 3) << " (forced int conversion)\n";
+  std::cout << std::plus<>{}(3.14, 3) << " (deduced common type, double)\n";
 
   return 0;
 }
 ```
 
-
-#2 DO
-
-```cpp
-#include <iostream>
-
-auto main() -> int {
-  // TODO: lesson code
-  std::cout << "What will it be?\n"; 
-}
-```
-
+Takeaway:
+- `std::plus<int>` converts inputs to `int`, so `3.14` is truncated.
+- `std::plus<>` deduces types from arguments, keeping floating-point precision here.
