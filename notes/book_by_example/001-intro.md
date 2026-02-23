@@ -12,9 +12,8 @@ The environment uses Neovim plus helper scripts and the `cppnote` command.
 ```cpp
 // Intro runnable block
 #include <iostream>
-int main() {
-  std::cout << "Introducing old and new syntax\n";
-  return 0;
+auto main() -> int {
+  std::cout << "Introducing old and new syntax\n"; 
 }
 ```
 
@@ -41,3 +40,41 @@ int main() {
 Takeaway:
 - `std::plus<int>` converts inputs to `int`, so `3.14` is truncated.
 - `std::plus<>` deduces types from arguments, keeping floating-point precision here.
+
+Templates are used to create overloads for every possible pair of parameters.
+
+```cpp
+#include <iostream>
+#include <functional>
+template<typename T, typename U>
+auto simple_plus(T lhs, U rhs) -> decltype(lhs + rhs) {
+  return lhs + rhs;
+}
+
+auto main() -> int {
+
+  std::cout << simple_plus(3.14, 3) << "\n";
+  std::cout << simple_plus(3, 3) << "\n";
+
+}
+
+```
+
+## decltype();
+
+`decltype(expr)` gives you the exact type of expr at compile time.                                                                    
+                                                                                                                                      
+  Example:
+
+  `int x = 0;`
+  `decltype(x) y = 1; // y is int`
+
+  Useful for:
+
+  - return types based on expressions
+  - preserving precise types in templates
+  - avoiding manual type repetition
+
+`decltype(auto)` goes further: it preserves references/value category in returns.
+
+
