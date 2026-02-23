@@ -1,0 +1,288 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_path="${BASH_SOURCE[0]}"
+while [ -L "$source_path" ]; do
+  source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+  source_path="$(readlink "$source_path")"
+  if [[ "$source_path" != /* ]]; then
+    source_path="$source_dir/$source_path"
+  fi
+done
+script_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
+
+usage() {
+  cat <<'EOF'
+cppnote: one-word CLI for cpp-performance-notebook
+
+usage:
+  cppnote <command> [args...]
+
+commands:
+  help
+  env
+  doctor [--json]
+  selftest
+  compile <source.cpp> [output]
+  run <source.cpp> [args...]
+  asm <source.cpp> [asm-file]
+  perf <binary> [args...]
+  md-list <file.md>
+  md-check <file.md> [block]
+  md-run <file.md> [block] [-- args...]
+  scaffold [main|snippet]
+  newnote <NNN> <topic-slug>
+  notes [all|book|college|integrated]
+  install
+
+examples:
+  cppnote doctor
+  cppnote selftest
+  cppnote compile src/smoke.cpp smoke
+  cppnote md-list notes/integrated/005-memory-layout-and-alignment.md
+  cppnote md-check notes/03_decltype.md 1
+  cppnote md-run notes/integrated/005-memory-layout-and-alignment.md 1
+  cppnote scaffold main
+  cppnote newnote 006 cache-locality
+  cppnote notes integrated
+EOF
+}
+
+if [ $# -lt 1 ]; then
+  usage
+  exit 1
+fi
+
+cmd="$1"
+shift || true
+
+case "$cmd" in
+  help|-h|--help)
+    usage
+    ;;
+
+  env)
+    echo "repo_root=$repo_root"
+    echo "scripts=$repo_root/scripts"
+    echo "notes=$repo_root/notes"
+    ;;
+
+  doctor)
+    json=0
+    if [ "${1:-}" = "--json" ]; then
+      json=1
+    elif [ $# -gt 0 ]; then
+      echo "usage: cppnote doctor [--json]"
+      exit 1
+    fi
+
+    status=0
+    check_cmd() {
+      local name="$1"
+      local required="$2"
+      if command -v "$name" >/dev/null 2>&1; then
+        [ "$json" -eq 1 ] && echo "{\"type\":\"cmd\",\"name\":\"$name\",\"ok\":true,\"required\":$required}" || echo "[OK] command: $name"
+      else
+        [ "$json" -eq 1 ] && echo "{\"type\":\"cmd\",\"name\":\"$name\",\"ok\":false,\"required\":$required}" || echo "[MISSING] command: $name"
+        if [ "$required" = "true" ]; then
+          status=1
+        fi
+      fi
+    }
+    check_file() {
+      local path="$1"
+      if [ -f "$path" ]; then
+        [ "$json" -eq 1 ] && echo "{\"type\":\"file\",\"path\":\"$path\",\"ok\":true}" || echo "[OK] file: $path"
+      else
+        [ "$json" -eq 1 ] && echo "{\"type\":\"file\",\"path\":\"$path\",\"ok\":false}" || echo "[MISSING] file: $path"
+        status=1
+      fi
+    }
+
+    [ "$json" -eq 0 ] && echo "== cppnote doctor =="
+    check_cmd "bash" true
+    check_cmd "clang++" true
+    check_cmd "awk" true
+    check_cmd "sed" true
+    check_cmd "perf" false
+    check_cmd "nvim" false
+
+    check_file "$repo_root/scripts/md_cpp.sh"
+    check_file "$repo_root/scripts/new_integrated_lesson.sh"
+    check_file "$repo_root/scripts/cpp_block_scaffold.sh"
+    check_file "$repo_root/scripts/nvim_cpp_block.vim"
+    check_file "$repo_root/notes/templates/integrated_lesson.md"
+
+    if [ "$json" -eq 0 ]; then
+      if [ "$status" -eq 0 ]; then
+        echo "doctor: healthy"
+      else
+        echo "doctor: issues found"
+      fi
+    fi
+    exit "$status"
+    ;;
+
+  selftest)
+    echo "== cppnote selftest =="
+    status=0
+
+    if ! "$repo_root/scripts/cpp_block_scaffold.sh" main | grep -q '^```cpp'; then
+      echo "[FAIL] scaffold main fence"
+      status=1
+    else
+      echo "[OK] scaffold main fence"
+    fi
+
+    tmp_md="$(mktemp)"
+    cat >"$tmp_md" <<'EOF'
+# selftest
+```cpp
+#include <iostream>
+int main() {
+  std::cout << "cppnote-selftest-ok\n";
+  return 0;
+}
+```
+EOF
+
+    if ! "$repo_root/scripts/md_cpp.sh" "$tmp_md" --block 1 --compile-only >/dev/null 2>&1; then
+      echo "[FAIL] md compile-only"
+      status=1
+    else
+      echo "[OK] md compile-only"
+    fi
+
+    run_out="$("$repo_root/scripts/md_cpp.sh" "$tmp_md" --block 1 2>&1 || true)"
+    if printf '%s\n' "$run_out" | grep -q 'cppnote-selftest-ok'; then
+      echo "[OK] md run"
+    else
+      echo "[FAIL] md run"
+      status=1
+    fi
+    rm -f "$tmp_md"
+
+    if [ "$status" -eq 0 ]; then
+      echo "selftest: passed"
+    else
+      echo "selftest: failed"
+    fi
+    exit "$status"
+    ;;
+
+  compile)
+    if [ $# -lt 1 ]; then
+      echo "usage: cppnote compile <source.cpp> [output]"
+      exit 1
+    fi
+    "$repo_root/scripts/build_release.sh" "$@"
+    ;;
+
+  run)
+    if [ $# -lt 1 ]; then
+      echo "usage: cppnote run <source.cpp> [args...]"
+      exit 1
+    fi
+    "$repo_root/scripts/run.sh" "$@"
+    ;;
+
+  asm)
+    if [ $# -lt 1 ]; then
+      echo "usage: cppnote asm <source.cpp> [asm-file]"
+      exit 1
+    fi
+    "$repo_root/scripts/asm.sh" "$@"
+    ;;
+
+  perf)
+    if [ $# -lt 1 ]; then
+      echo "usage: cppnote perf <binary> [args...]"
+      exit 1
+    fi
+    "$repo_root/scripts/perf_stat.sh" "$@"
+    ;;
+
+  md-list)
+    if [ $# -ne 1 ]; then
+      echo "usage: cppnote md-list <file.md>"
+      exit 1
+    fi
+    "$repo_root/scripts/md_cpp.sh" "$1" --list
+    ;;
+
+  md-check)
+    if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+      echo "usage: cppnote md-check <file.md> [block]"
+      exit 1
+    fi
+    md_file="$1"
+    block="${2:-1}"
+    "$repo_root/scripts/md_cpp.sh" "$md_file" --block "$block" --compile-only
+    ;;
+
+  md-run)
+    if [ $# -lt 1 ]; then
+      echo "usage: cppnote md-run <file.md> [block] [-- args...]"
+      exit 1
+    fi
+    md_file="$1"
+    shift || true
+    block=1
+    if [ $# -gt 0 ] && [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+      block="$1"
+      shift || true
+    fi
+    "$repo_root/scripts/md_cpp.sh" "$md_file" --block "$block" "$@"
+    ;;
+
+  scaffold)
+    mode="${1:-main}"
+    "$repo_root/scripts/cpp_block_scaffold.sh" "$mode"
+    ;;
+
+  newnote)
+    if [ $# -ne 2 ]; then
+      echo "usage: cppnote newnote <NNN> <topic-slug>"
+      exit 1
+    fi
+    "$repo_root/scripts/new_integrated_lesson.sh" "$1" "$2"
+    ;;
+
+  notes)
+    track="${1:-all}"
+    case "$track" in
+      all)
+        find "$repo_root/notes"/{book_by_example,college,integrated} -maxdepth 1 -type f -name '*.md' \
+          | sort
+        ;;
+      book)
+        find "$repo_root/notes/book_by_example" -maxdepth 1 -type f -name '*.md' | sort
+        ;;
+      college)
+        find "$repo_root/notes/college" -maxdepth 1 -type f -name '*.md' | sort
+        ;;
+      integrated)
+        find "$repo_root/notes/integrated" -maxdepth 1 -type f -name '*.md' | sort
+        ;;
+      *)
+        echo "usage: cppnote notes [all|book|college|integrated]"
+        exit 1
+        ;;
+    esac
+    ;;
+
+  install)
+    mkdir -p "$HOME/bin"
+    ln -sfn "$repo_root/scripts/cppnote" "$HOME/bin/cppnote"
+    chmod +x "$repo_root/scripts/cppnote"
+    echo "installed: $HOME/bin/cppnote -> $repo_root/scripts/cppnote"
+    ;;
+
+  *)
+    echo "unknown command: $cmd"
+    echo
+    usage
+    exit 1
+    ;;
+esac

@@ -10,9 +10,29 @@ For each topic, keep exactly this structure:
 4. Performance implication
 5. Interview explanation
 
+## Two-source integration workflow
+
+For each topic, keep three files:
+
+- `notes/book_by_example/NNN-topic.md`
+- `notes/college/NNN-topic.md`
+- `notes/integrated/NNN-topic.md`
+
+Create them with:
+
+```bash
+./scripts/new_integrated_lesson.sh 005 memory-layout-and-alignment
+```
+
+Then run the integrated lesson code block with:
+
+```bash
+./scripts/md_cpp.sh notes/integrated/005-memory-layout-and-alignment.md --block 1
+```
+
 ## Topics
 
-- 01 Value categories and move semantics
+- 01 Greetings III                  <!-- Value categories and move semantics -->
 - 02 `auto` and type deduction
 - 03 `decltype` and `decltype(auto)`
 - 04 Perfect forwarding
